@@ -4,6 +4,7 @@ var Comment         = require("./models/comment");
 var seedDB          = require("./seeds");
 var methodOverride  = require("method-override");
 var flash           = require("connect-flash");
+
 var passport              = require("passport"),
     User                  = require("./models/user"),
     LocalStrategy         = require("passport-local"),

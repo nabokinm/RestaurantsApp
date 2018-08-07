@@ -3,6 +3,30 @@ var router  = express.Router();
 var Campground = require("../models/campground");
 var middleware = require("../middleware");
 
+//UPLOAD FILES FUNCTIONALITY
+var multer = require('multer');
+var storage = multer.diskStorage({
+  filename: function(req, file, callback) {
+    callback(null, Date.now() + file.originalname);
+  }
+});
+var imageFilter = function (req, file, cb) {
+    // accept image files only
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/i)) {
+        return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+};
+var upload = multer({ storage: storage, fileFilter: imageFilter})
+
+var cloudinary = require('cloudinary');
+cloudinary.config({ 
+  cloud_name: process.env.API_NAME, 
+  api_key: process.env.API_KEY, 
+  api_secret: process.env.API_SECRET
+});
+
+
 //INDEX ROUTE - show all campgrounds
 router.get("/",function(req, res){
      
@@ -23,10 +47,16 @@ router.get("/new", middleware.isLoggedIn, function(req, res){
 })
 
 //CREATE ROUTE add new campground to the DB
-router.post("/", middleware.isLoggedIn, function(req, res){
+router.post("/", middleware.isLoggedIn, upload.single('image'), function(req, res){
     
+cloudinary.uploader.upload(req.file.path, function(result) {
+  // add cloudinary url for the image to the campground object under image property
+  req.body.image = result.secure_url;
+  req.body.image_id=result.public_id;
+
+    var image_id=req.body.image_id;
     var name = req.body.campName;
-    var url = req.body.campUrl;
+    var url = req.body.image;
     var price = req.body.campPrice;
     var desc = req.body.description; 
     var author = {
@@ -39,6 +69,7 @@ router.post("/", middleware.isLoggedIn, function(req, res){
 Campground.create({
     name: name, 
     image: url,
+    image_id: image_id,
     price: price,
     description: desc,
     author: author
@@ -52,6 +83,10 @@ Campground.create({
          res.redirect("/index");
     }
     });
+
+});
+    
+
 });
 
 //SHOW ROUTE - show info about one campground
@@ -86,7 +121,12 @@ router.get("/:id/edit", middleware.checkCampgroundOwnership, function(req, res){
     
     
         
-router.put("/:id", middleware.checkCampgroundOwnership, function(req, res){
+router.put("/:id", middleware.checkCampgroundOwnership, upload.single('image'), function(req, res){
+    if(req.file){
+       cloudinary.v2.uploader.destroy(req.body.image_id); {
+    }
+    }
+    
     var id = req.params.id;
     var data ={name: req.body.campName, image: req.body.campUrl, price: req.body.campPrice,
     description: req.body.description};
@@ -120,5 +160,10 @@ router.delete("/:id", middleware.checkCampgroundOwnership, function(req,res){
     }
 })
 })
+
+
+
+
+
 
 module.exports = router;
