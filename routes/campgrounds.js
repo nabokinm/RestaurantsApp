@@ -165,16 +165,27 @@ router.put("/:id", middleware.checkCampgroundOwnership, upload.single('image'), 
 
 //DELETE ROUTE
 router.delete("/:id", middleware.checkCampgroundOwnership, function(req, res) {
-
     var id = req.params.id;
-    Campground.findByIdAndRemove(id, function(err) {
+  
+    Campground.findById(id, async function(err, updatedCampground) {
         if (err) {
             console.log("Something went wrong with the DB");
-            console.log(err)
+            console.log(err);
         }
         else {
-
-            res.redirect("/index");
+            try{
+                await cloudinary.v2.uploader.destroy(updatedCampground.image_id);
+                updatedCampground.remove();
+                req.flash("success", "Restaurant successefully deleted.");
+                res.redirect("/index");
+            }
+            catch(err){
+                console.log("Something went wrong with the DB. cant delete restaurant!");
+                console.log(err);
+                req.flash("error", "Error deleting the restaurant.");
+                return res.redirect("back")
+            }
+            
 
         }
     })
